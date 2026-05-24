@@ -4,7 +4,9 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type HomePayload = Record<string, unknown>;
+type HomeRecord = Record<string, unknown>;
+type HomeArrayPayload = Array<{ key: string; value: unknown }>;
+type HomePayload = HomeRecord | HomeArrayPayload;
 
 const DEFAULT_SOCIALS = [
   {
@@ -33,6 +35,9 @@ const DEFAULT_SOCIALS = [
 const DEFAULTS: Record<string, string> = {
   hero_title: 'Забайкальская государственная кинокомпания',
   hero_subtitle: 'Региональное кино, кинопоказы и культурные проекты Забайкалья',
+  about_title: 'О компании',
+  about_content:
+    'Забайкальская государственная кинокомпания — ведущий производитель кинопродукции в регионе, работающий с 1975 года. Мы создаём фильмы, которые вдохновляют, информируют и объединяют людей.\n\nНаша миссия — развитие кинокультуры в Забайкальском крае, поддержка местных талантов и создание качественного контента для зрителей всех возрастов.',
   footer_address: '672039, г. Чита, ул. Н. Островского, 56',
   footer_phone: '+7 (3022) 26-66-71',
   footer_email: 'kinochita@mail.ru',
@@ -49,10 +54,21 @@ function stringifyValue(value: unknown): string {
 function normalizePayload(body: HomePayload): Record<string, string> {
   const result: Record<string, string> = {};
 
+  if (Array.isArray(body)) {
+    for (const item of body) {
+      if (!item || typeof item !== 'object') continue;
+      const key = String(item.key || '').trim();
+      if (!key || key === 'id' || key === 'updatedAt') continue;
+      result[key] = stringifyValue(item.value);
+    }
+    return result;
+  }
+
   for (const [key, value] of Object.entries(body)) {
     if (key === 'id' || key === 'updatedAt') continue;
+
     if (key === 'footer' && value && typeof value === 'object' && !Array.isArray(value)) {
-      const footer = value as Record<string, unknown>;
+      const footer = value as HomeRecord;
       if (footer.address !== undefined) result.footer_address = stringifyValue(footer.address);
       if (footer.phone !== undefined) result.footer_phone = stringifyValue(footer.phone);
       if (footer.email !== undefined) result.footer_email = stringifyValue(footer.email);
@@ -81,7 +97,6 @@ function normalizePayload(body: HomePayload): Record<string, string> {
         ? { id: 'max', platform: 'max', label: 'MAX', url: result.footer_max, iconUrl: '/social/max.png' }
         : null,
     ].filter(Boolean);
-
     result.footer_socials = JSON.stringify(socials);
   }
 
@@ -129,7 +144,6 @@ export async function PUT(request: NextRequest) {
     const body = (await request.json()) as HomePayload;
     const settings = normalizePayload(body);
     await upsertSettings(settings);
-
     return NextResponse.json({ ok: true, saved: settings });
   } catch (error) {
     console.error('PUT /api/home failed:', error);

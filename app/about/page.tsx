@@ -1,20 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import Image from 'next/image';
 import useSWR from 'swr';
-import {
-  EmptyState,
-  PageHero,
-  PeopleIcon,
-  easeOut,
-  reveal,
-  stagger,
-} from '../_components/BrandPrimitives';
 
 interface AboutData {
-  about_title: string;
-  about_content: string;
+  about_title?: string;
+  about_content?: string;
 }
 
 interface Employee {
@@ -24,121 +15,108 @@ interface Employee {
   photoUrl?: string | null;
 }
 
-const defaultAbout: AboutData = {
+const defaultAbout = {
   about_title: 'О компании',
   about_content:
     'Забайкальская государственная кинокомпания — ведущий производитель кинопродукции в регионе, работающий с 1975 года. Мы создаём фильмы, которые вдохновляют, информируют и объединяют людей.\n\nНаша миссия — развитие кинокультуры в Забайкальском крае, поддержка местных талантов и создание качественного контента для зрителей всех возрастов.',
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Ошибка загрузки данных');
+  return response.json();
+};
 
 export default function AboutPage() {
   const { data: aboutData } = useSWR<AboutData>('/api/home', fetcher, {
     fallbackData: defaultAbout,
     revalidateOnFocus: false,
   });
-  const { data: employees, isLoading } = useSWR<Employee[]>('/api/employees?active=true', fetcher);
 
-  const data = aboutData || defaultAbout;
-  const paragraphs = data.about_content
+  const { data: employeesData, isLoading } = useSWR<Employee[]>('/api/employees?active=true', fetcher, {
+    revalidateOnFocus: false,
+  });
+
+  const title = aboutData?.about_title || defaultAbout.about_title;
+  const content = aboutData?.about_content || defaultAbout.about_content;
+  const employees = Array.isArray(employeesData) ? employeesData : [];
+
+  const paragraphs = content
     .split('\n\n')
     .map((paragraph) => paragraph.trim())
     .filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-background">
-      <PageHero
-        eyebrow="О нас"
-        title={data.about_title}
-        description="Информация о кинокомпании и команде, которая работает над проектами, показами и развитием кино в Забайкалье."
-        icon={<PeopleIcon />}
-      />
-
-      <section className="px-4 py-16 md:py-20 bg-white">
-        <div className="container mx-auto max-w-6xl">
-          <motion.div
-            className="max-w-4xl"
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, amount: 0.25 }}
-            variants={stagger}
-          >
-            <motion.div variants={reveal} transition={{ duration: 0.65, ease: easeOut }} className="section-kicker mb-5">
-              О компании
-            </motion.div>
-            <motion.div variants={reveal} transition={{ duration: 0.7, ease: easeOut }} className="space-y-5">
-              {paragraphs.map((paragraph) => (
-                <p key={paragraph} className="text-base md:text-lg leading-relaxed text-muted-foreground">
-                  {paragraph}
-                </p>
-              ))}
-            </motion.div>
-          </motion.div>
+    <div className="min-h-screen bg-[#f5f5f2] text-black">
+      <section className="border-b border-black/10 bg-white/50 px-4 py-20 md:px-8 md:py-28">
+        <div className="mx-auto max-w-[1240px]">
+          <div className="mb-6 flex items-center gap-3">
+            <span className="h-px w-8 bg-black/60" />
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-black/65">О компании</p>
+          </div>
+          <h1 className="max-w-5xl text-5xl font-black leading-none tracking-tight md:text-7xl">
+            {title}
+          </h1>
+          <p className="mt-6 max-w-3xl text-lg leading-8 text-black/58">
+            Информация о Забайкальской государственной кинокомпании и сотрудниках.
+          </p>
         </div>
       </section>
 
-      <section className="px-4 py-16 md:py-20 bg-[#f0f0ed]">
-        <div className="container mx-auto max-w-7xl">
-          <motion.div
-            className="mb-10 md:mb-12 max-w-3xl"
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, amount: 0.25 }}
-            variants={stagger}
-          >
-            <motion.div variants={reveal} transition={{ duration: 0.65, ease: easeOut }} className="section-kicker mb-5">
-              Команда
-            </motion.div>
-            <motion.h2 variants={reveal} transition={{ duration: 0.7, ease: easeOut }} className="text-3xl md:text-5xl font-black leading-tight">
-              Сотрудники кинокомпании
-            </motion.h2>
-          </motion.div>
-
-          {isLoading ? (
-            <div className="cinema-card py-14 px-6 text-center text-muted-foreground">
-              Загрузка сотрудников...
-            </div>
-          ) : employees && employees.length > 0 ? (
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
-              initial="initial"
-              whileInView="animate"
-              viewport={{ once: true, amount: 0.12 }}
-              variants={stagger}
-            >
-              {employees.map((employee) => (
-                <motion.article
-                  key={employee.id}
-                  variants={reveal}
-                  transition={{ duration: 0.62, ease: easeOut }}
-                  whileHover={{ y: -6 }}
-                  className="cinema-card overflow-hidden bg-white"
-                >
-                  <div className="aspect-[4/5] bg-secondary overflow-hidden relative">
-                    {employee.photoUrl ? (
-                      <Image
-                        src={employee.photoUrl}
-                        alt={employee.name}
-                        fill
-                        sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-6xl font-black text-primary/35">
-                        {getInitials(employee.name)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-5">
-                    <h3 className="text-xl font-black text-foreground">{employee.name}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{employee.position}</p>
-                  </div>
-                </motion.article>
+      <section className="px-4 py-14 md:px-8 md:py-20">
+        <div className="mx-auto grid max-w-[1240px] gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <article className="rounded-2xl border border-black/12 bg-white p-6 shadow-[0_18px_45px_rgba(17,17,17,0.06)] md:p-10">
+            <h2 className="text-3xl font-black leading-tight md:text-4xl">{title}</h2>
+            <div className="mt-7 space-y-5 text-base leading-8 text-black/65 md:text-lg">
+              {paragraphs.map((paragraph, index) => (
+                <p key={`${paragraph.slice(0, 24)}-${index}`}>{paragraph}</p>
               ))}
-            </motion.div>
-          ) : (
-            <EmptyState label="Сотрудники пока не добавлены" />
-          )}
+            </div>
+          </article>
+
+          <aside className="rounded-2xl border border-black/12 bg-white p-6 shadow-[0_18px_45px_rgba(17,17,17,0.06)] md:p-8">
+            <div className="mb-6 flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-lg font-black text-white">К</span>
+              <div>
+                <h2 className="text-2xl font-black">Команда</h2>
+                <p className="text-sm text-black/50">Сотрудники кинокомпании</p>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="rounded-xl border border-black/10 bg-black/[0.03] p-5 text-sm text-black/55">
+                Загрузка сотрудников...
+              </div>
+            ) : employees.length > 0 ? (
+              <div className="space-y-4">
+                {employees.map((employee) => (
+                  <div key={employee.id} className="flex gap-4 rounded-xl border border-black/10 bg-white p-4">
+                    <div className="relative flex h-20 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/5 text-lg font-black text-black/35">
+                      {employee.photoUrl ? (
+                        <Image
+                          src={employee.photoUrl}
+                          alt={employee.name}
+                          fill
+                          sizes="64px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        getInitials(employee.name)
+                      )}
+                    </div>
+                    <div className="min-w-0 pt-1">
+                      <h3 className="text-lg font-black leading-6">{employee.name}</h3>
+                      <p className="mt-1 text-sm leading-6 text-black/55">{employee.position}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-black/10 bg-black/[0.03] p-5 text-sm leading-6 text-black/55">
+                Сотрудники пока не добавлены.
+              </div>
+            )}
+          </aside>
         </div>
       </section>
     </div>
