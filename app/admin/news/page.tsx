@@ -363,7 +363,7 @@ export default function AdminNewsPage() {
       </header>
 
       <main className="px-4 py-9">
-        <div className="mx-auto max-w-none">
+        <div className="mx-auto max-w-[1760px]">
           {message && <div className="mb-5 rounded-md border border-black/10 bg-white p-4 text-sm font-bold text-black/70">{message}</div>}
 
           {mode === 'list' ? (
@@ -431,7 +431,7 @@ export default function AdminNewsPage() {
             </section>
           ) : (
             <>
-              <div className="mb-6 flex flex-wrap gap-2">
+              <div className="mx-auto mb-6 flex max-w-[1180px] flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setMode('edit')}
@@ -449,7 +449,7 @@ export default function AdminNewsPage() {
               </div>
 
               {mode === 'edit' ? (
-                <form onSubmit={saveNews} className="max-w-[1180px] rounded-md border border-black/15 bg-white p-5 shadow-[0_12px_30px_rgba(17,17,17,0.04)]">
+                <form onSubmit={saveNews} className="mx-auto max-w-[1180px] rounded-md border border-black/15 bg-white p-5 shadow-[0_12px_30px_rgba(17,17,17,0.04)]">
                   <h2 className="text-xl font-black text-black">{selected ? 'Редактирование новости' : 'Новая новость'}</h2>
 
                   <div className="mt-6 space-y-4">
@@ -565,7 +565,7 @@ export default function AdminNewsPage() {
                   </div>
                 </form>
               ) : (
-                <section className="max-w-[1180px] rounded-md border border-black/20 bg-white p-5 shadow-[0_12px_30px_rgba(17,17,17,0.04)]">
+                <section className="mx-auto max-w-[1180px] rounded-md border border-black/20 bg-white p-5 shadow-[0_12px_30px_rgba(17,17,17,0.04)]">
                   <div className="mb-5 flex items-center justify-between gap-4">
                     <h2 className="text-xl font-black text-black">Предпросмотр новости</h2>
                     <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-bold text-black/45">
