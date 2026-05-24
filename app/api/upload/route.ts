@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Vercel не даёт надёжно сохранять загруженные файлы в public/uploads.
-// Поэтому для бесплатного Vercel-варианта сохраняем небольшие изображения
-// как data URL, а сама строка потом записывается в поле imageUrl новости.
+// На Vercel нельзя надежно сохранять пользовательские файлы в public/uploads.
+// Поэтому для бесплатного Vercel-варианта небольшие изображения сохраняются
+// как data URL, а получившаяся строка записывается в imageUrl/photoUrl в базе Neon.
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
@@ -43,9 +43,13 @@ export async function POST(request: NextRequest) {
     const base64 = Buffer.from(bytes).toString('base64');
     const dataUrl = `data:${file.type};base64,${base64}`;
 
+    // В разных местах админки исторически ожидались разные поля:
+    // новости брали data.url, а сотрудники брали data.fileUrl.
+    // Возвращаем оба поля, чтобы загрузка работала в обоих разделах.
     return NextResponse.json({
       ok: true,
       url: dataUrl,
+      fileUrl: dataUrl,
       fileName: file.name || `image.${extension}`,
       size: file.size,
       storage: 'database-data-url',
