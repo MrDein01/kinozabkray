@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mkdir, writeFile } from 'fs/promises';
-import path from 'path';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
+// Vercel не даёт надёжно сохранять загруженные файлы в public/uploads.
+// Поэтому для бесплатного Vercel-варианта сохраняем небольшие изображения
+// как data URL, а сама строка потом записывается в поле imageUrl новости.
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
-function getSafeExtension(fileName: string, mimeType: string) {
-  const byName = fileName.split('.').pop()?.toLowerCase() || '';
-  if (ALLOWED_EXTENSIONS.has(byName)) return byName;
-
+function getExtension(mimeType: string) {
   if (mimeType === 'image/jpeg') return 'jpg';
   if (mimeType === 'image/png') return 'png';
   if (mimeType === 'image/webp') return 'webp';
   if (mimeType === 'image/gif') return 'gif';
-
   return '';
 }
 
@@ -24,42 +21,34 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file');
-    const folder = String(formData.get('folder') || 'uploads')
-      .replace(/[^a-zA-Z0-9_-]/g, '')
-      .slice(0, 40) || 'uploads';
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'Файл не найден' }, { status: 400 });
     }
 
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'Можно загружать только изображения' }, { status: 400 });
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'Файл слишком большой. Максимум 10 МБ' }, { status: 400 });
-    }
-
-    const extension = getSafeExtension(file.name, file.type);
-    if (!extension) {
+    if (!ALLOWED_TYPES.has(file.type)) {
       return NextResponse.json({ error: 'Поддерживаются JPG, PNG, WEBP и GIF' }, { status: 400 });
     }
 
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'Файл слишком большой. Максимум 4 МБ' }, { status: 400 });
+    }
+
+    const extension = getExtension(file.type);
+    if (!extension) {
+      return NextResponse.json({ error: 'Не удалось определить тип изображения' }, { status: 400 });
+    }
+
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', folder);
-    await mkdir(uploadDir, { recursive: true });
-
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
-    const filePath = path.join(uploadDir, fileName);
-    await writeFile(filePath, buffer);
+    const base64 = Buffer.from(bytes).toString('base64');
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
     return NextResponse.json({
       ok: true,
-      url: `/uploads/${folder}/${fileName}`,
-      fileName,
+      url: dataUrl,
+      fileName: file.name || `image.${extension}`,
       size: file.size,
+      storage: 'database-data-url',
     });
   } catch (error) {
     console.error('POST /api/upload failed', error);
